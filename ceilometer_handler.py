@@ -96,10 +96,14 @@ class CeilometerHandler:
                 # Add more links to the array
                 for line in json.loads(request):
                     for line2 in line['links']:
-                        if line2['rel'] in ('network.incoming.bytes', 'network.incoming.packets',
-                                            'network.outgoing.bytes', 'network.outgoing.packets'):
-                            links.append(line2)
+#                        if line2['rel'] in ('network.incoming.bytes', 'network.incoming.packets',
+#                                            'network.outgoing.bytes', 'network.outgoing.packets'):
+ #                           links.append(line2)
 
+                        if line2['rel'] in ('network.incoming.bytes', 'network.incoming.packets', 'network.incoming.bytes.rate',
+                                            'network.outgoing.bytes', 'network.outgoing.bytes.rate', 'network.outgoing.packets'):
+                            links.append(line2)
+                    
                 # Query ceilometer API using the array of links
                 for line in links:
                     self.query_ceilometer(host[1], line['rel'], line['href'])

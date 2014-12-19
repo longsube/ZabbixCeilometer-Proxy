@@ -87,11 +87,18 @@ class ZabbixHandler:
         Method used to create the items for measurements regarding the template
         :param template_id: receives the template id
         """
+#        items_list = ['cpu', 'cpu_util', 'disk.read.bytes', 'disk.write.bytes',
+#                      'disk.write.requests',
+#                      'disk.read.requests', 'network.incoming.bytes', 'network.incoming.packets',
+#                      'network.outgoing.bytes',
+#                      'network.outgoing.packets']
+
         items_list = ['cpu', 'cpu_util', 'disk.read.bytes', 'disk.write.bytes',
                       'disk.write.requests',
                       'disk.read.requests', 'network.incoming.bytes', 'network.incoming.packets',
-                      'network.outgoing.bytes',
+                      'network.outgoing.bytes','network.outgoing.bytes.rate','network.incoming.bytes.rate',
                       'network.outgoing.packets']
+                      
         for item in items_list:
             if item == 'cpu':
                 value_type = 3

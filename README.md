@@ -9,10 +9,12 @@
 
 ####Tại Zabbix host
 
+Log on với quyền root
+
 Cài các gói cần thiết
 ```sh
-sudo apt-get install -y python-pip git
-sudo pip install pika
+apt-get install -y python-pip git
+pip install pika
 ```
 
 Clone repo này về 
@@ -48,6 +50,17 @@ Sau khi sửa xong chạy lệnh:
 Tại web của zabbix, download `template_nova.xml` và import vào Các template của bạn (Configuration, Template, Import)
 
 **Chú ý** Bạn có thể tham khảo hướng dẫn tại [youtube](https://www.youtube.com/watch?v=DXz-W9fgvRk)
+
+####Sử dụng script auto start
+
+```sh
+cd /root/ZabbixCeilometer-Proxy
+mv proxy /etc/init.d/
+chmod 770 /etc/init.d/proxy
+/etc/init.d/proxy start
+/etc/init.d/proxy stop
+update-rc.d proxy defaults
+```
 
 ##Copyright
 Copyright (c) 2014 OneSource Consultoria Informatica, Lda. [🔗](http://www.onesource.pt)

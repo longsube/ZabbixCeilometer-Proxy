@@ -26,6 +26,7 @@ class ReadConfFile:
 
         :param file:
         """
+        self.conf_file_name=file
         self.config = ConfigParser.SafeConfigParser()
         self.config.readfp(open(file))
 

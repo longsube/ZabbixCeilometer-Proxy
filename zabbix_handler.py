@@ -4,18 +4,29 @@ Zabbix Handler
 
 Provides a class responsible for the communication with Zabbix, including access to several API methods
 """
+#############       NOTICE         ######################
+# ProZaC is a fork of ZabbixCeilometer-Proxy (aka ZCP), 
+# which is Copyright of OneSource Consultoria Informatica (http://www.onesource.pt). 
+# For further information about ZCP, check its github : 
+# https://github.com/clmarques/ZabbixCeilometer-Proxy  
+##########################################################
+### ProZaC added functionalities (in this module) ######## 
+#
+# - support to token renewal : proxy restart is no longer needed each hour
+# - refinement of item data types (units, multiplier, representation)
+# 
+### --------------------------- ##########################
 
-__authors__ = "Claudio Marques, David Palma, Luis Cordeiro"
-__copyright__ = "Copyright (c) 2014 OneSource Consultoria Informatica, Lda"
+__copyright__ = "Istituto Nazionale di Fisica Nucleare (INFN)"
 __license__ = "Apache 2"
-__contact__ = "www.onesource.pt"
-__date__ = "01/09/2014"
+__contact__ = "emidio.giorgio@ct.infn.it"
+__date__ = "15/11/2014"
+__version__ = "0.9"
 
-__version__ = "1.0"
 
 import urllib2
 import json
-
+import time
 
 class ZabbixHandler:
     def __init__(self, keystone_admin_port, compute_port, admin_user, zabbix_admin_pass, zabbix_host, keystone_host,
@@ -30,7 +41,14 @@ class ZabbixHandler:
         self.template_name = template_name
         self.zabbix_proxy_name = zabbix_proxy_name
         self.keystone_auth = keystone_auth
-        self.token = keystone_auth.getToken()
+        #self.token = keystone_auth.getToken()
+        full_token= keystone_auth.getTokenV2()
+        self.token = full_token['id']
+        self.token_expires = full_token['expires']
+        
+        self.logger=keystone_auth.logger
+        self.logger.info("Zabbix handler initialized")
+
 
     def first_run(self):
 
@@ -42,6 +60,8 @@ class ZabbixHandler:
         self.group_list = self.host_group_list(tenants)
         self.check_host_groups()
         self.check_instances()
+
+        self.logger.info("Zabbix first run performed")
 
     def get_zabbix_auth(self):
         """
@@ -82,23 +102,16 @@ class ZabbixHandler:
         self.create_items(template_id)
         return template_id
 
-    def create_items(self, template_id):
+    def create_items_legacy(self, template_id):
         """
         Method used to create the items for measurements regarding the template
         :param template_id: receives the template id
         """
-#        items_list = ['cpu', 'cpu_util', 'disk.read.bytes', 'disk.write.bytes',
-#                      'disk.write.requests',
-#                      'disk.read.requests', 'network.incoming.bytes', 'network.incoming.packets',
-#                      'network.outgoing.bytes',
-#                      'network.outgoing.packets']
-
         items_list = ['cpu', 'cpu_util', 'disk.read.bytes', 'disk.write.bytes',
-                      'disk.write.requests',
+                      'disk.write.requests', 'network.incoming.bytes.rate', 'network.outgoing.bytes.rate',
                       'disk.read.requests', 'network.incoming.bytes', 'network.incoming.packets',
-                      'network.outgoing.bytes','network.outgoing.bytes.rate','network.incoming.bytes.rate',
+                      'network.outgoing.bytes',
                       'network.outgoing.packets']
-                      
         for item in items_list:
             if item == 'cpu':
                 value_type = 3
@@ -107,7 +120,74 @@ class ZabbixHandler:
             payload = self.define_item(template_id, item, value_type)
             self.contact_zabbix_server(payload)
 
-    def define_item(self, template_id, item, value_type):
+    def create_items(self, template_id):
+        """
+        Method used to create the items for measurements regarding the template
+        :param template_id: receives the template id
+        """
+        items_list = ['cpu', 'cpu_util', 'disk.read.bytes', 'disk.write.bytes',
+                      'disk.write.requests',
+                      'disk.read.requests', 'network.incoming.bytes', 'network.incoming.packets',
+                      'network.outgoing.bytes',
+                      'network.outgoing.packets']
+
+        ####  defaults
+        #value_type = 0
+        #delta = 0
+        #units = ""
+        #########
+        
+
+        # can be improved
+
+        for item in items_list:
+
+            if item == 'cpu':
+                value_type = 3
+                units='ns'
+                delta=2
+                formula_factor = "1" 
+
+            if item == 'cpu_util':
+                value_type = 0
+                units = '%'
+                delta=0 
+                formula_factor = "1" #it changes only for network traffic rates
+
+            if item.startswith('network.'):
+                value_type=0
+                units = ''
+                delta=0 #speed
+                formula_factor = "1" #it changes only for network traffic rates
+                
+                if item.endswith('bytes'):
+                    value_type=3 #numeric unsigned
+                    units='bps'
+                    delta = 1
+                    formula_factor="8"
+
+            if item.startswith('disk.'):
+                value_type=0
+                units = ''
+                delta=0
+                formula_factor = "1" #it changes only for network traffic rates
+                
+                if item.endswith('bytes'):
+                    units='B'
+                    delta=2
+                    #multiplier="1048576"
+            
+        
+            payload = self.define_item(template_id, item, value_type,delta,units,formula_factor)
+            response=self.contact_zabbix_server(payload)
+            
+            if "error" in response:
+                self.logger.error("%s : %s %s" %(response['error']['code'],response['error']['message'],response['error']['data']))
+            else:
+                self.logger.debug("Item defined correctly with id %s" %(response['result']['itemids']))
+ 
+
+    def define_item(self, template_id, item, value_type,delta,units,factor):
         """
         Method used to define the items parameters
 
@@ -116,6 +196,41 @@ class ZabbixHandler:
         :param value_type:
         :return: returns the json message to send to zabbix API
         """
+
+        payload = {"jsonrpc": "2.0",
+                   "method": "item.create",
+                   "params": {
+                       "name": item,
+                       "key_": item,
+                       "hostid": template_id,
+                       "type": 2,
+                       "value_type": value_type,
+                       "history": "90",
+                       "trends": "365",
+                       "units": units,
+                       "delta": delta,
+                       "multiplier": 1,
+                       "formula": factor,
+                       "lifetime": "30",
+                       "delay": 10
+                   },
+                   "auth": self.api_auth,
+                   "id": 1}
+        
+        self.logger.debug("Creating item %s" %(item)) 
+
+        return payload
+
+    def define_item_legacy(self, template_id, item, value_type):
+        """
+        Method used to define the items parameters
+
+        :param template_id:
+        :param item:
+        :param value_type:
+        :return: returns the json message to send to zabbix API
+        """
+
         payload = {"jsonrpc": "2.0",
                    "method": "item.create",
                    "params": {
@@ -216,6 +331,8 @@ class ZabbixHandler:
             if tenant_name == 'admin':
                 tenant_id = item[1]
 
+        self.check_token_lifetime(self.token_expires)
+
         auth_request = urllib2.Request(
             "http://" + self.keystone_host + ":" + self.compute_port + "/v2/" + tenant_id +
             "/servers/detail?all_tenants=1")
@@ -223,6 +340,7 @@ class ZabbixHandler:
         auth_request.add_header('Content-Type', 'application/json;charset=utf8')
         auth_request.add_header('Accept', 'application/json')
         auth_request.add_header('X-Auth-Token', self.token)
+
         try:
             auth_response = urllib2.urlopen(auth_request)
             servers = json.loads(auth_response.read())
@@ -434,30 +552,34 @@ class ZabbixHandler:
         self.contact_zabbix_server(payload)
 
     def get_tenants(self):
+        # might be well renamed or relocated to another module EG
         """
         Method used to get a list of tenants from keystone
 
         :return: list of tenants
         """
         tenants = None
-        auth_request = urllib2.Request('http://' + self.keystone_host + ':'+self.keystone_admin_port+'/v2.0/tenants')
+
+        self.check_token_lifetime(self.token_expires)
+
+        url='http://' + self.keystone_host + ':'+self.keystone_admin_port+'/v2.0/tenants'
+        auth_request = urllib2.Request(url)
         auth_request.add_header('Content-Type', 'application/json;charset=utf8')
         auth_request.add_header('Accept', 'application/json')
         auth_request.add_header('X-Auth-Token', self.token)
-
+        
         try:
             auth_response = urllib2.urlopen(auth_request)
             tenants = json.loads(auth_response.read())
         except urllib2.HTTPError, e:
             if e.code == 401:
-                print '401'
-                print 'Check your keystone credentials\nToken refused!'
+                self.logger.error ('%s : Check your keystone credentials, given token has been refused.' %(url))
             elif e.code == 404:
-                print 'not found'
+                self.logger.error('%s not found' %(url))
             elif e.code == 503:
-                print 'service unavailable'
+                self.logger.error ('%s service unavailable' %(url))
             else:
-                print 'unknown error: '
+                self.logger.error ('unknown error contacting %s' %(url))
         return tenants
 
     def get_tenant_name(self, tenants, tenant_id):
@@ -543,3 +665,19 @@ class ZabbixHandler:
         response = json.loads(f.read())
         f.close()
         return response
+
+    def check_token_lifetime(self,expires_timestamp,threshold=300):
+        """ 
+        check time (in seconds) left before token expiration
+        if time left is below threshold, provides token renewal
+        """
+
+        now_timestamp_utc=time.time()+time.timezone
+        timeleft=expires_timestamp - now_timestamp_utc
+
+        if timeleft < threshold: # default, less than five minutes
+            full_token=self.keystone_auth.getTokenV2()
+            self.token=full_token['id']
+            self.token_expires=full_token['expires']
+            self.logger.info("Zabbix handler token has been renewed")
+            

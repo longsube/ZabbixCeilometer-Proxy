@@ -3,19 +3,31 @@ Class for polling Ceilometer
 
 This class provides means to requests for authentication tokens to be used with OpenStack's Ceilometer, Nova and RabbitMQ
 """
+#############       NOTICE         ######################
+# ProZaC is a fork of ZabbixCeilometer-Proxy (aka ZCP), 
+# which is Copyright of OneSource Consultoria Informatica (http://www.onesource.pt). 
+# For further information about ZCP, check its github : 
+# https://github.com/clmarques/ZabbixCeilometer-Proxy  
+##########################################################
+### ProZaC added functionalities (in this module) ######## 
+#
+# - support to token renewal : proxy restart is no longer needed each hour
+# - support to logging 
+# 
+### --------------------------- ##########################
 
-__authors__ = "Claudio Marques, David Palma, Luis Cordeiro"
-__copyright__ = "Copyright (c) 2014 OneSource Consultoria Informatica, Lda"
+__copyright__ = "Istituto Nazionale di Fisica Nucleare (INFN)"
 __license__ = "Apache 2"
-__contact__ = "www.onesource.pt"
-__date__ = "01/09/2014"
+__contact__ = "emidio.giorgio@ct.infn.it"
+__date__ = "15/11/2014"
+__version__ = "0.9"
 
-__version__ = "1.0"
 
 import struct
 import urllib2
 import json
 import socket
+import time
 from threading import Timer
 
 class CeilometerHandler:
@@ -34,7 +46,13 @@ class CeilometerHandler:
         self.zabbix_port = zabbix_port
         self.zabbix_proxy_name = zabbix_proxy_name
         self.keystone_auth = keystone_auth
-        self.token = self.keystone_auth.getToken()
+        #self.token = self.keystone_auth.getToken()
+        full_token= self.keystone_auth.getTokenV2()
+        self.token = full_token['id']
+        self.token_expires = full_token['expires']
+
+        self.logger=keystone_auth.logger
+        self.logger.info("Ceilometer handler initialized")
 
     def run(self):
         Timer(self.polling_interval, self.run, ()).start()
@@ -67,11 +85,14 @@ class CeilometerHandler:
         TODO
         :param hosts_id:
         """
+
+        self.check_token_lifetime(self.token_expires)
+
         for host in hosts_id:
             links = []
             if not host[1] == self.template_name:
 
-                print "Checking host:" + host[3]
+                self.logger.info("Checking host %s" %(host[3]))
                 #Get links for instance compute metrics
                 request = urllib2.urlopen(urllib2.Request(
                     "http://" + self.ceilometer_api_host + ":" + self.ceilometer_api_port +
@@ -96,18 +117,14 @@ class CeilometerHandler:
                 # Add more links to the array
                 for line in json.loads(request):
                     for line2 in line['links']:
-#                        if line2['rel'] in ('network.incoming.bytes', 'network.incoming.packets',
-#                                            'network.outgoing.bytes', 'network.outgoing.packets'):
- #                           links.append(line2)
-
-                        if line2['rel'] in ('network.incoming.bytes', 'network.incoming.packets', 'network.incoming.bytes.rate',
-                                            'network.outgoing.bytes', 'network.outgoing.bytes.rate', 'network.outgoing.packets'):
+                        if line2['rel'] in ('network.incoming.bytes', 'network.incoming.packets', 'network.outgoing.bytes.rate', 'network.incoming.bytes.rate',
+                                            'network.outgoing.bytes', 'network.outgoing.packets'):
                             links.append(line2)
-                    
+
                 # Query ceilometer API using the array of links
                 for line in links:
                     self.query_ceilometer(host[1], line['rel'], line['href'])
-                    print "  - Item " + line['rel']
+                    self.logger.debug ("  - Item %s" %(line['rel']))
 
     def query_ceilometer(self, resource_id, item_key, link):
         """
@@ -116,6 +133,9 @@ class CeilometerHandler:
         :param item_key:
         :param link:
         """
+
+        self.check_token_lifetime(self.token_expires)
+
         try:
             global contents
             contents = urllib2.urlopen(urllib2.Request(link + str("&limit=1"),
@@ -125,14 +145,13 @@ class CeilometerHandler:
 
         except urllib2.HTTPError, e:
             if e.code == 401:
-                print "401"
-                print "Error... \nToken refused! Please check your credentials"
+                self.logger.error("Error 401...Token refused! Please check your credentials")
             elif e.code == 404:
-                print 'not found'
+                self.logger.error("%s not found" %(link))
             elif e.code == 503:
-                print 'service unavailable'
+                self.logger.error("service %s unavailable" %(link))
             else:
-                print 'unknown error: '
+                self.logger.error("unknown error opening %s " %(link))
 
         response = json.loads(contents)
 
@@ -199,3 +218,20 @@ class CeilometerHandler:
 
         payload = self.set_proxy_header(data)
         self.connect_zabbix(payload)
+
+
+    def check_token_lifetime(self,expires_timestamp,threshold=300):
+        """ 
+        check time (in seconds) left before token expiration
+        if time left is below threshold, provides token renewal
+        """
+
+        now_timestamp_utc=time.time()+time.timezone
+        timeleft=expires_timestamp - now_timestamp_utc
+
+        if timeleft < threshold: # default, less than five minutes
+            full_token=self.keystone_auth.getTokenV2()
+            self.token=full_token['id']
+            self.token_expires=full_token['expires']
+            self.logger.info("ceilometer token has been renewed")
+    

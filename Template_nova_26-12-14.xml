@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <zabbix_export>
     <version>2.0</version>
-    <date>2014-12-19T09:10:25Z</date>
+    <date>2014-12-26T06:39:31Z</date>
     <groups>
         <group>
             <name>Templates</name>
@@ -297,7 +297,7 @@
                     <status>0</status>
                     <value_type>0</value_type>
                     <allowed_hosts/>
-                    <units/>
+                    <units>B/s</units>
                     <delta>0</delta>
                     <snmpv3_contextname/>
                     <snmpv3_securityname/>
@@ -411,7 +411,7 @@
                     <status>0</status>
                     <value_type>0</value_type>
                     <allowed_hosts/>
-                    <units/>
+                    <units>B/s</units>
                     <delta>0</delta>
                     <snmpv3_contextname/>
                     <snmpv3_securityname/>
@@ -483,8 +483,8 @@
     </templates>
     <triggers>
         <trigger>
-            <expression>{Template Nova:network.incoming.bytes.rate.last(0)}&gt;50000000</expression>
-            <name>Network Incoming Alert</name>
+            <expression>{Template Nova:network.incoming.bytes.rate.last(0)}&gt;5000000</expression>
+            <name>Network Incoming Alert on {HOST.NAME}</name>
             <url/>
             <status>0</status>
             <priority>2</priority>
@@ -493,8 +493,8 @@
             <dependencies/>
         </trigger>
         <trigger>
-            <expression>{Template Nova:network.outgoing.bytes.rate.last(0)}&gt;50000000</expression>
-            <name>Network Outgoing Alert</name>
+            <expression>{Template Nova:network.outgoing.bytes.rate.last(0)}&gt;5000000</expression>
+            <name>Network Outgoing Alert on {HOST.NAME}</name>
             <url/>
             <status>0</status>
             <priority>2</priority>
@@ -503,4 +503,50 @@
             <dependencies/>
         </trigger>
     </triggers>
+    <graphs>
+        <graph>
+            <name>Network bandwidth</name>
+            <width>900</width>
+            <height>200</height>
+            <yaxismin>0.0000</yaxismin>
+            <yaxismax>100.0000</yaxismax>
+            <show_work_period>1</show_work_period>
+            <show_triggers>1</show_triggers>
+            <type>0</type>
+            <show_legend>1</show_legend>
+            <show_3d>0</show_3d>
+            <percent_left>0.0000</percent_left>
+            <percent_right>0.0000</percent_right>
+            <ymin_type_1>0</ymin_type_1>
+            <ymax_type_1>0</ymax_type_1>
+            <ymin_item_1>0</ymin_item_1>
+            <ymax_item_1>0</ymax_item_1>
+            <graph_items>
+                <graph_item>
+                    <sortorder>0</sortorder>
+                    <drawtype>5</drawtype>
+                    <color>00EE00</color>
+                    <yaxisside>0</yaxisside>
+                    <calc_fnc>2</calc_fnc>
+                    <type>0</type>
+                    <item>
+                        <host>Template Nova</host>
+                        <key>network.incoming.bytes.rate</key>
+                    </item>
+                </graph_item>
+                <graph_item>
+                    <sortorder>1</sortorder>
+                    <drawtype>5</drawtype>
+                    <color>0000EE</color>
+                    <yaxisside>0</yaxisside>
+                    <calc_fnc>2</calc_fnc>
+                    <type>0</type>
+                    <item>
+                        <host>Template Nova</host>
+                        <key>network.outgoing.bytes.rate</key>
+                    </item>
+                </graph_item>
+            </graph_items>
+        </graph>
+    </graphs>
 </zabbix_export>

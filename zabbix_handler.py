@@ -128,7 +128,7 @@ class ZabbixHandler:
         items_list = ['cpu', 'cpu_util', 'disk.read.bytes', 'disk.write.bytes',
                       'disk.write.requests',
                       'disk.read.requests', 'network.incoming.bytes', 'network.incoming.packets',
-                      'network.outgoing.bytes',
+                      'network.outgoing.bytes', 'network.outgoing.bytes.rate', 'network.incoming.bytes.rate',
                       'network.outgoing.packets']
 
         ####  defaults
@@ -163,6 +163,11 @@ class ZabbixHandler:
                 if item.endswith('bytes'):
                     value_type=3 #numeric unsigned
                     units='bps'
+                    delta = 1
+                    formula_factor="8"
+                if item.endswith('rate'):
+                    value_type=3 #numeric unsigned
+                    units='B/s'
                     delta = 1
                     formula_factor="8"
 

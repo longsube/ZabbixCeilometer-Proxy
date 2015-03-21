@@ -19,7 +19,7 @@ pip install pika
 
 Clone repo này về 
 ```sh
-git clone https://github.com/hocchudong/ZabbixCeilometer-Proxy.git
+git clone https://github.com/longsube/ZabbixCeilometer-Proxy.git
 ```
 
 ####Tại Controller node:

@@ -136,7 +136,7 @@ def init_zcp(threads,conf_file):
 
 if __name__ == '__main__':
 
-    configuration_file=""
+    configuration_file="/root/zabbix-2.2/ZabbixCeilometer-Proxy/proxy.conf"
 
     try:
         opts,args=getopt.getopt(sys.argv[1:],"hc:",["--help","conf="])

@@ -126,6 +126,7 @@ class ZabbixHandler:
         :param template_id: receives the template id
         """
         items_list = ['cpu', 'cpu_util', 'disk.read.bytes', 'disk.write.bytes',
+                      'memory', 'memory.usage', 'memory.resident',
                       'disk.write.requests',
                       'disk.read.requests', 'network.incoming.bytes', 'network.incoming.packets',
                       'network.outgoing.bytes', 'network.outgoing.bytes.rate', 'network.incoming.bytes.rate',

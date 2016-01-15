@@ -109,6 +109,7 @@ class ZabbixHandler:
         """
         items_list = ['cpu', 'cpu_util', 'disk.read.bytes', 'disk.write.bytes',
                       'disk.write.requests', 'network.incoming.bytes.rate', 'network.outgoing.bytes.rate',
+                       'memory', 'memory.usage', 'memory.resident', 
                       'disk.read.requests', 'network.incoming.bytes', 'network.incoming.packets',
                       'network.outgoing.bytes',
                       'network.outgoing.packets']

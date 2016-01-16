@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Class for Handling KeystoneEvents in OpenStack's RabbitMQ/QPID
 
@@ -55,19 +56,33 @@ class ProjectEvents:
         Method used to listen to keystone events (with rabbitmq amq)
         """
 
+        #Khai báo kết nối
         connection = pika.BlockingConnection(pika.ConnectionParameters(host=self.rpc_host,
                                                                        credentials=pika.PlainCredentials(
                                                                            username=self.rpc_user,
                                                                            password=self.rpc_pass)))
+        #Khai báo channel
         channel = connection.channel()
+        #Khai báo queue, tạo nếu cần thiết,
+        # exclusive chỉ cho phép thao tác bởi phiên hiện tại
         result = channel.queue_declare(exclusive=True)
+        #Lấy tên của queue vừa tạo
         queue_name = result.method.queue
+
         # exchange name should be made available as option, maybe advanced
-        channel.exchange_declare(exchange='keystone', type='topic')
-        channel.queue_bind(exchange='openstack', queue=queue_name, routing_key='notifications.#')
-        channel.queue_bind(exchange='keystone', queue=queue_name, routing_key='keystone.#')
-        channel.basic_consume(self.keystone_callback_rabbitmq, queue=queue_name, no_ack=True)
-        channel.start_consuming()
+        try:
+            #Khởi tạo một exchange mới, nếu tồn tại kiểm tra xem exchange đó có được tạo đúng hay không.
+            #http://pika.readthedocs.org/en/latest/modules/channel.html
+            channel.exchange_declare(exchange='keystone', type='topic')
+            #tạo queue trong một exchange cụ thể
+            channel.queue_bind(exchange='keystone', queue=queue_name, routing_key='notifications.info')
+            #consumer_callback (method)–The method to callback when consuming with the signature consumer_callback
+            # (channel, method, properties,body), where
+            #  channel: pika.Channel method: pika.spec.Basic.Deliver properties: pika.spec.BasicProperties body: str, unicode, or bytes (python 3.x)
+            channel.basic_consume(self.keystone_callback_rabbitmq, queue=queue_name, no_ack=True)
+            channel.start_consuming()
+        except Exception,e:
+            print e
 
     def keystone_callback_rabbitmq(self, ch, method, properties, body):
         """
@@ -78,27 +93,60 @@ class ProjectEvents:
         :param properties: refers to the proprieties of the message
         :param body: refers to the message transmitted
         """
+
         payload = json.loads(body)
+        tenant_name = []
 
         if payload['event_type'] == 'identity.project.created':
-            
-            tenant_id = payload['payload']['resource_info']
+
+            tenant_id = payload["payload"]["resource_info"]
             tenants = self.zabbix_handler.get_tenants()
             tenant_name = self.zabbix_handler.get_tenant_name(tenants, tenant_id)
-	    self.logger.info("New project (%s) created -> corresponding host group created on zabbix" %(tenant_name))
+            self.logger.info("New project (%s) created -> corresponding host group created on zabbix" %(tenant_name))
             self.zabbix_handler.group_list.append([tenant_name, tenant_id])
             self.zabbix_handler.create_host_group(tenant_name)
 
         elif payload['event_type'] == 'identity.project.deleted':
-            
-            tenant_id = payload['payload']['resource_info']
+
+            tenant_id = payload["payload"]["resource_info"]
             tenants = self.zabbix_handler.get_tenants()
             tenant_name = self.zabbix_handler.get_tenant_name(tenants, tenant_id)
             self.logger.info("Project %s deleted -> Corresponding host group deleted from zabbix" %(tenant_name))
             self.zabbix_handler.project_delete(tenant_id)
 
+'''
+        body = json.loads(body)
+        print '\t body: %s\n' %body
+        b = body['oslo.message']
+        print '\tb: %s: \n%s' %(b, type(b))
+        payload = json.loads(b)
+        print '\tpayload: %s \n%s' %(payload, type(payload))
 
-    ##  QPID  
+        if payload['event_type'] == 'compute.instance.create.start':
+            
+            tenant_id = payload['payload']['tenant_id']
+            print 'tennant id: %s' %tenant_id
+            tenants = self.zabbix_handler.get_tenants()
+            print 'tenants: %s' %tenants
+            tenant_name = self.zabbix_handler.get_tenant_name(tenants, tenant_id)
+            print 'tenant name: %s' %tenant_name
+            self.logger.info("New project (%s) created -> corresponding host group created on zabbix" %(tenant_name))
+            self.zabbix_handler.group_list.append([tenant_name, tenant_id])
+            self.zabbix_handler.create_host_group(tenant_name)
+
+        elif payload['payload'][0]['resource_metadata']['event_type'] == 'compute.instance.exists':
+            
+            tenant_id = payload['payload'][0]['resource_metadata']['tenant_id']
+            print 'tennant id: %s' %tenant_id
+            tenants = self.zabbix_handler.get_tenants()
+            print 'tenants: %s' %tenants
+            tenant_name = self.zabbix_handler.get_tenant_name(tenants, tenant_id)
+            print 'tenant name: %s' %tenant_name
+            self.logger.info("Project %s deleted -> Corresponding host group deleted from zabbix" %(tenant_name))
+            self.zabbix_handler.project_delete(tenant_id)
+
+
+    ##  QPID
     def keystone_amq_qpid(self):
 
         from qpid.messaging.endpoints import Connection
@@ -111,10 +159,10 @@ class ProjectEvents:
         self.keystone_qpid_loop (receiver)
 
     def keystone_qpid_loop(self,recv):
-        
+
         while True:
             message = recv.fetch()
-            event_type=message.content['event_type'] 
+            event_type=message.content['event_type']
             self.logger.debug("Caught event %s" %(event_type))
 
             if event_type == "identity.project.created":
@@ -132,6 +180,7 @@ class ProjectEvents:
                 tenant_name = self.zabbix_handler.get_tenant_name(tenants, tenant_id)
                 self.logger.info("Project %s deleted -> Corresponding host group deleted from zabbix" %(tenant_name))
                 self.zabbix_handler.project_delete(tenant_id)
-                 
+            else:
+                pass
 
-            else: pass 
+'''

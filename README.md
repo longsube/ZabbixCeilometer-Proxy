@@ -1,7 +1,7 @@
 ﻿#Zabbix-Ceilometer Proxy
-**A.K.A. ZCP**
+**HCD ZCP**
 
-##Nguồn bài viết
+##Chương trình được phát hành dưới giấy phép Apache. Chương trình gốc tại:
 
 [OneSourceConsult](https://github.com/OneSourceConsult/ZabbixCeilometer-Proxy)
 
@@ -19,6 +19,7 @@ pip install pika
 
 Clone repo này về 
 ```sh
+cd /root/
 git clone https://github.com/hocchudong/ZabbixCeilometer-Proxy.git
 ```
 
@@ -33,7 +34,7 @@ Sửa file cấu hình keystone
 ```sh 
 [DEFAULT]
 ...
-notification_driver = keystone.openstack.common.notifier.rpc_notifier
+notification_driver = messaging
 ...
 ```
 

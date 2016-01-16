@@ -85,7 +85,10 @@ class NovaEvents:
         :param properties: refers to the proprieties of the message
         :param body: refers to the message transmitted
         """
-        payload = json.loads(body)
+
+        body = json.loads(body)
+        b = body['oslo.message']
+        payload = json.loads(b)
 
         try:
 

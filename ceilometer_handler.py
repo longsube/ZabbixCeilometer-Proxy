@@ -104,7 +104,7 @@ class CeilometerHandler:
                 for line in json.loads(request):
                     for line2 in line['links']:
                         if line2['rel'] in ('cpu', 'cpu_util', 'disk.read.bytes', 'disk.read.requests',
-                                            'disk.write.bytes', 'disk.write.requests'):
+                                            'disk.write.bytes', 'disk.write.requests','memory', 'memory.usage', 'memory.resident'):
                             links.append(line2)
 
                 # Get the links regarding network metrics
@@ -120,6 +120,12 @@ class CeilometerHandler:
                         if line2['rel'] in ('network.incoming.bytes', 'network.incoming.packets', 'network.outgoing.bytes.rate', 'network.incoming.bytes.rate',
                                             'network.outgoing.bytes', 'network.outgoing.packets'):
                             links.append(line2)
+
+# Add more links to the array
+#                for line in json.loads(request):
+#                    for line2 in line['links']:
+#                        if line2['rel'] in ('memory', 'memory.usage', 'memory.resident'):
+#                            links.append(line2)
 
                 # Query ceilometer API using the array of links
                 for line in links:
@@ -220,7 +226,7 @@ class CeilometerHandler:
         self.connect_zabbix(payload)
 
 
-    def check_token_lifetime(self,expires_timestamp,threshold=300):
+    def check_token_lifetime(self,expires_timestamp,threshold=30):
         """ 
         check time (in seconds) left before token expiration
         if time left is below threshold, provides token renewal

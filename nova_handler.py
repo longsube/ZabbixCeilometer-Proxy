@@ -28,7 +28,7 @@ __version__ = "0.9"
 
 import json
 import pika
-
+import send_mail
 
 class NovaEvents:
 
@@ -89,6 +89,15 @@ class NovaEvents:
         body = json.loads(body)
         b = body['oslo.message']
         payload = json.loads(b)
+<<<<<<< HEAD
+	    VMs = "/root/ZabbixCeilometer-Proxy/long"
+        VM2 = "/root/ZabbixCeilometer-Proxy/long2"
+ #       pay = str(payload)
+        #with open(VMs,'w') as f:
+#            f.write(pay+'\n')
+        #    json.dump(payload,f)
+=======
+>>>>>>> f1d177db8f1c80607a6e26cf685fcb9728d7ccb5
 
         try:
 
@@ -98,17 +107,38 @@ class NovaEvents:
             if type_of_message == 'compute.instance.create.end':
                 instance_id = payload['payload']['instance_id']
                 instance_name = payload['payload']['hostname']
+		instance_type = payload['payload']['instance_type']
+  	        public_ip = payload['payload']['fixed_ips'][0]['address']	
+                ram = payload['payload']['memory_mb']
+                root_disk = payload['payload']['root_gb']
+                vcpu = payload['payload']['vcpus']
+		host = payload['payload']['host']
+                #public_ip = 'a'
                 self.zabbix_handler.create_host(instance_name, instance_id, tenant_name)
                 self.logger.info("Instance creation detected : creating host %s (tenant %s) on zabbix server" %(instance_name,tenant_name))
+                send_mail.send(instance_name, instance_id, instance_type, public_ip, tenant_name, ram, root_disk, vcpu, host, 'create')
+                self.logger.info("Send notified mail")
                 self.ceilometer_handler.host_list = self.ceilometer_handler.get_hosts_ID()
+
+            elif type_of_message == 'compute.instance.delete.start':
+               # with open(VM2,'w') as f2:
+                #    json.dump(payload,f2)
 
             elif type_of_message == 'compute.instance.delete.end':
                 host = payload['payload']['instance_id']
                 instance_name = payload['payload']['hostname']
+                instance_type = payload['payload']['instance_type']
+                public_ip = 'b'
+                ram = payload['payload']['memory_mb']
+                root_disk = payload['payload']['root_gb']
+                vcpu = payload['payload']['vcpus']
+                physical_host = payload['payload']['host']
                 try:
                     host_id = self.zabbix_handler.find_host_id(host)
                     self.zabbix_handler.delete_host(host_id)
                     self.logger.info("Instance removal detected : deleting host %s from zabbix server" %(instance_name))
+                    send_mail.send(instance_name, host, instance_type, public_ip, tenant_name,ram, root_disk, vcpu, physical_host, 'delete')
+                    self.logger.info("Send notified mail")
                     self.ceilometer_handler.host_list = self.ceilometer_handler.get_hosts_ID()
 
                 except:

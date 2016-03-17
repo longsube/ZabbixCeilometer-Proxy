@@ -89,16 +89,6 @@ class NovaEvents:
         body = json.loads(body)
         b = body['oslo.message']
         payload = json.loads(b)
-<<<<<<< HEAD
-	    VMs = "/root/ZabbixCeilometer-Proxy/long"
-        VM2 = "/root/ZabbixCeilometer-Proxy/long2"
- #       pay = str(payload)
-        #with open(VMs,'w') as f:
-#            f.write(pay+'\n')
-        #    json.dump(payload,f)
-=======
->>>>>>> f1d177db8f1c80607a6e26cf685fcb9728d7ccb5
-
         try:
 
             tenant_name = payload['_context_project_name']

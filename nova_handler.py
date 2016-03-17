@@ -103,7 +103,6 @@ class NovaEvents:
                 root_disk = payload['payload']['root_gb']
                 vcpu = payload['payload']['vcpus']
 		host = payload['payload']['host']
-                #public_ip = 'a'
                 self.zabbix_handler.create_host(instance_name, instance_id, tenant_name)
                 self.logger.info("Instance creation detected : creating host %s (tenant %s) on zabbix server" %(instance_name,tenant_name))
                 send_mail.send(instance_name, instance_id, instance_type, public_ip, tenant_name, ram, root_disk, vcpu, host, 'create')
@@ -111,9 +110,7 @@ class NovaEvents:
                 self.ceilometer_handler.host_list = self.ceilometer_handler.get_hosts_ID()
 
             elif type_of_message == 'compute.instance.delete.start':
-               # with open(VM2,'w') as f2:
-                #    json.dump(payload,f2)
-
+              
             elif type_of_message == 'compute.instance.delete.end':
                 host = payload['payload']['instance_id']
                 instance_name = payload['payload']['hostname']

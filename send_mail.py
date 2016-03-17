@@ -15,11 +15,11 @@ from email.Header import Header
 from email.Utils import formatdate
 
 # Mail Account
-MAIL_ACCOUNT = 'mycloudvnn@vdc.com.vn'
-MAIL_PASSWORD = 'Vdc1T@!ma1l'
+MAIL_ACCOUNT = 
+MAIL_PASSWORD = 
 
 # Sender Name
-SMTP_SERVER = 'smtp1.vdc.com.vn'
+SMTP_SERVER = 
 SMTP_PORT = 25
 Check = True
 
